@@ -130,16 +130,32 @@ def nested_bias_correction(y_observed, y_predicted, variable_name="nested_bias_c
         pandas.Series: Bias-corrected predicted values.
     """
 
-    # Step 1: Standardize the modelled monthly series
-    # ===============================================
+    # Step 1: Standardize the modelled monthly series by month
+    # ========================================================
     y_prime = standardize_by_month(y_predicted)
 
     # Step 2: Monthly lag 1 autocorrelation correction
     # ================================================
-    rho_predicted = y_predicted.groupby(
-        y_predicted.index.month).apply(lambda x: x.autocorr(lag=1))
-    rho_observed = y_observed.groupby(
-        y_observed.index.month).apply(lambda x: x.autocorr(lag=1))
+    # Autocorrelation between two consecutive month (January , February) and (February, March) and so on
+    temp = pd.DataFrame({
+        'current': y_predicted,
+        'lagged': y_predicted.shift(1)
+    })
+
+    rho_predicted = temp.groupby(temp.index.month).apply(
+        lambda x: x['current'].corr(x['lagged'])
+    )
+
+    temp = pd.DataFrame({
+        'current': y_observed,
+        'lagged': y_observed.shift(1)
+    })
+
+    rho_observed = temp.groupby(temp.index.month).apply(
+        lambda x: x['current'].corr(x['lagged'])
+    )
+
+    del temp
 
     unique_years = sorted(y_prime.index.year.unique(), reverse=True)
     unique_months = sorted(y_prime.index.month.unique(), reverse=True)
@@ -242,5 +258,33 @@ def nested_bias_correction(y_observed, y_predicted, variable_name="nested_bias_c
     # transforms the index from 2014-01-01 to 2014 for mapping values
     z_ratio = (z_three_prime / z_k).groupby(z_k.index.year).mean()
     y_corrected = y_three_prime * y_three_prime.index.year.map(z_ratio)
+
+    return y_corrected.rename(variable_name)
+
+
+def monthly_bias_correction(y_observed, y_predicted, variable_name="monthly_bias_corrected"):
+    """
+    Corrects biases in the predicted values using the monthly bias correction (MBC) method. 
+
+    Note: Series must contain a DatetimeIndex.
+    Reference: https://doi.org/10.1061/(ASCE)HE.1943-5584.0000585
+               https://doi.org/10.1029/2011WR010464
+
+    Args:
+        y_observed (pandas.Series): Observed values of the variable with a DatetimeIndex.
+        y_predicted (pandas.Series): Predicted values of the variable with a DatetimeIndex.
+        variable_name (str, optional): Name for the corrected series. Defaults to "nested_bias_corrected".
+
+    Returns:
+        pandas.Series: Bias-corrected predicted values.
+    """
+
+    # Step 1: Standardize the predicted series by month
+    # ==================================================
+    y_prime = standardize_by_month(y_predicted)
+
+    # Step 2: Destandardize the series by month using observed values
+    # ================================================================
+    y_corrected = destandardize_by_month(y_prime, y_observed)
 
     return y_corrected.rename(variable_name)
