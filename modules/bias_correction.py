@@ -200,7 +200,7 @@ def nested_bias_correction(y_observed, y_predicted, variable_name="nested_bias_c
     for year in unique_years:
         for month in unique_months:
             y_two_prime.loc[(y_two_prime.index.month == month) & (
-                y_two_prime.index.year == year)] = y_two_prime_i_k(month, year)[0]
+                y_two_prime.index.year == year)] = y_two_prime_i_k(month, year)[0] if y_two_prime_i_k(month, year).size > 0 else 0  # If any data is missing enter 0, occurs if any data from previous month is missing.
 
     # Step 3: Rescale the series using observed means and stds
     # ========================================================

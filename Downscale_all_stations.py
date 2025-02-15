@@ -26,7 +26,7 @@ path_gcm = r"F:\Reanalysis Data\Monthly\GCM\ACCESS ESM 15\historical"
 
 
 def downscale(station, reanalysis, gcm):
-    df = wrangle(path_station, path_reanalysis, path_gcm)
+    df = wrangle(station, reanalysis, gcm)
 
     print(df[0].iloc[0]["WELL ID"], "Started processing ...")
 
@@ -115,4 +115,8 @@ def downscale(station, reanalysis, gcm):
 # downscale(path_station, path_reanalysis, path_gcm)
 
 for station_path in station_files:
-    downscale(station_path, path_reanalysis, path_gcm)
+    try:
+        downscale(station_path, path_reanalysis, path_gcm)
+    except Exception as e:
+        # Log the error and continue
+        print(f"Error processing {station_path}: {e}")
