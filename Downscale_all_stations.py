@@ -5,6 +5,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
 from category_encoders import OneHotEncoder
 from sklearn.model_selection import train_test_split
+from tqdm import tqdm
 import numpy as np
 import xarray as xr
 import pandas as pd
@@ -27,8 +28,6 @@ path_gcm = r"F:\Reanalysis Data\Monthly\GCM\ACCESS ESM 15\historical"
 
 def downscale(station, reanalysis, gcm):
     df = wrangle(station, reanalysis, gcm)
-
-    print(df[0].iloc[0]["WELL ID"], "Started processing ...")
 
     imputed = monthly_mean_imputer(df[0]["WATER TABLE (m)"], "wtable")
 
@@ -112,9 +111,7 @@ def downscale(station, reanalysis, gcm):
     print(df[0].iloc[0]["WELL ID"], "Done processing ...")
 
 
-# downscale(path_station, path_reanalysis, path_gcm)
-
-for station_path in station_files:
+for station_path in tqdm(station_files):
     try:
         downscale(station_path, path_reanalysis, path_gcm)
     except Exception as e:
