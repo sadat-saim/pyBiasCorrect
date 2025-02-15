@@ -83,6 +83,7 @@ def downscale(station, reanalysis, gcm):
     nbc = nested_bias_correction(
         y[: downscaled.index[-1]], downscaled[y.index[0]:])
 
+    # merged observed, downscaled, nbc, mbc and metadata
     merged_df = imputed.to_frame().join(nbc, how='outer').join(mbc, how='outer').join(
         downscaled[y.index[0]:], how='outer', rsuffix='_downscaled').dropna()
 
