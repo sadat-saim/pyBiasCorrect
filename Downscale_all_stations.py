@@ -1,5 +1,5 @@
-from modules import wrangle, monthly_mean_imputer, add_seasons, monthly_bias_correction, nested_bias_correction
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from modules import wrangle,  wrangle_gcm, monthly_mean_imputer, add_seasons, monthly_bias_correction, nested_bias_correction
+from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.pipeline import make_pipeline
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
@@ -26,6 +26,33 @@ path_reanalysis = r"F:\Reanalysis Data\Monthly\Reanalysis"
 path_gcm = r"F:\Reanalysis Data\Monthly\GCM\ACCESS ESM 15\historical"
 
 
+def add_time_features(X):
+    """
+    Adds time-based features to a DataFrame with a DateTime index.
+
+    Parameters:
+    X (pd.DataFrame): DataFrame with a DateTime index.
+
+    Returns:
+    pd.DataFrame: Updated DataFrame with added time features.
+    """
+    X = X.copy()  # Avoid modifying the original DataFrame
+
+    X.loc[:, 'quarter'] = X.index.quarter
+    X.loc[:, 'month'] = X.index.month
+
+    # Ensure add_seasons() is defined
+    X.loc[:, 'season'] = add_seasons(X.index)
+
+    # Adding cyclic features
+    X.loc[:, 'month_sin'] = np.sin(2 * np.pi * X['month'] / 12)
+    X.loc[:, 'month_cos'] = np.cos(2 * np.pi * X['month'] / 12)
+
+    X.drop(columns='month', inplace=True)
+
+    return X
+
+
 def downscale(station, reanalysis, gcm):
     df = wrangle(station, reanalysis, gcm)
 
@@ -33,27 +60,8 @@ def downscale(station, reanalysis, gcm):
 
     y = imputed
 
-    X = df[1].loc[y.index[0]: y.index[-1]].copy()
-    X.loc[:, 'month'] = X.index.month
-    X.loc[:, 'quarter'] = X.index.quarter
-    # X.loc[:, 'year'] = X.index.year
-
-    X.loc[:, 'season'] = add_seasons(X.index)
-    # Adding cyclic features (optional)
-    X.loc[:, 'month_sin'] = np.sin(2 * np.pi * X['month'] / 12)
-    X.loc[:, 'month_cos'] = np.cos(2 * np.pi * X['month'] / 12)
-
-    X_gcm = df[-1]
-    X_gcm.loc[:, 'month'] = X_gcm.index.month
-    # X_gcm = gcm.loc[y.index[-1]:].copy()
-    X_gcm.loc[:, 'quarter'] = X_gcm.index.quarter
-    X_gcm.loc[:, 'season'] = add_seasons(X_gcm.index)
-    # Adding cyclic features (optional)
-    X_gcm.loc[:, 'month_sin'] = np.sin(2 * np.pi * X_gcm['month'] / 12)
-    X_gcm.loc[:, 'month_cos'] = np.cos(2 * np.pi * X_gcm['month'] / 12)
-    # X_gcm.loc[:, 'year'] = X_gcm.index.year
-    X.drop(columns='month', inplace=True)
-    X_gcm.drop(columns='month', inplace=True)
+    X = add_time_features(df[1].loc[y.index[0]: y.index[-1]])
+    X_gcm = add_time_features(df[-1])
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42)
@@ -77,15 +85,36 @@ def downscale(station, reanalysis, gcm):
 
     downscaled = model.predict(X_gcm[X_test.columns])
     downscaled = pd.Series(data=downscaled.reshape(-1),
-                           index=X_gcm.index, name='wtable')
+                           index=X_gcm.index, name='downscaled_hist')
+
+    y_observed = y[: downscaled.index[-1]]
+    y_predicted = downscaled[y.index[0]:]
+
     mbc = monthly_bias_correction(
-        y[: downscaled.index[-1]], downscaled[y.index[0]:])
+        y_observed, y_predicted, variable_name="mbc_hist")
     nbc = nested_bias_correction(
-        y[: downscaled.index[-1]], downscaled[y.index[0]:])
+        y_observed, y_predicted, variable_name="nbc_hist")
+
+    # ============================================================
+    # SSP Path
+    # ============================================================
+    ssp_path = r"F:\Reanalysis Data\Monthly\GCM\ACCESS ESM 15\ssp245"
+
+    lat = df[0].iloc[0]['LATITUDE']
+    lon = df[0].iloc[0]['LONGITUDE']
+
+    X_ssp_245 = add_time_features(wrangle_gcm(ssp_path, lat, lon))
+
+    downscaled_ssp_245 = model.predict(X_ssp_245[X_test.columns])
+    downscaled_ssp_245 = pd.Series(data=downscaled_ssp_245.reshape(-1),
+                                   index=X_ssp_245.index, name='downscaled_ssp_245')
+
+    mbc_ssp_245 = monthly_bias_correction(
+        y_observed, downscaled_ssp_245, variable_name="mbc_ssp_245")
 
     # merged observed, downscaled, nbc, mbc and metadata
-    merged_df = imputed.to_frame().join(nbc, how='outer').join(mbc, how='outer').join(
-        downscaled[y.index[0]:], how='outer', rsuffix='_downscaled').dropna()
+    merged_df = y_observed.to_frame().join(nbc, how='outer').join(mbc, how='outer').join(
+        y_predicted, how='outer').join(downscaled_ssp_245, how='outer').join(mbc_ssp_245, how='outer')
 
     # Add model evaluation metrics
     merged_df["Train MSE"] = train_mse
