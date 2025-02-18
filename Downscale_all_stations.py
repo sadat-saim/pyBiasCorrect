@@ -10,6 +10,8 @@ import numpy as np
 import xarray as xr
 import pandas as pd
 import os
+import multiprocessing
+
 os.chdir(os.path.expanduser(os.getcwd()))
 
 # my modules
@@ -141,9 +143,24 @@ def downscale(station, reanalysis, gcm):
     print(df[0].iloc[0]["WELL ID"], "Done processing ...")
 
 
-for station_path in tqdm(station_files):
+# Use joblib or pickle to store multiple models in the same file
+
+def process_station(station_path):
+    """Wrapper function to call downscale and handle errors."""
     try:
         downscale(station_path, path_reanalysis, path_gcm)
     except Exception as e:
-        # Log the error and continue
         print(f"Error processing {station_path}: {e}")
+
+
+# On Windows, multiprocessing requires the script to be wrapped inside
+# if __name__ == '__main__': to avoid process spawning issues.
+if __name__ == '__main__':
+    # Number of CPU cores to use, Since my cpu has 2 cores and 4 threads, I use 3 and leave 1 thread for other tasks
+    # use   `multiprocessing.cpu_count()` to use all CPU cores with caution
+    # Use up to 3 threads to keep system responsive
+    num_workers = min(3, len(station_files))
+
+    with multiprocessing.Pool(num_workers) as pool:
+        list(tqdm(pool.imap_unordered(process_station,
+             station_files), total=len(station_files)))
