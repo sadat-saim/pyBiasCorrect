@@ -4,6 +4,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from category_encoders import OneHotEncoder
 from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.svm import SVR
 from xgboost import XGBRegressor
@@ -23,9 +24,12 @@ path_station = r"F:\Reanalysis Data\Monthly\Observed"
 station_files = [os.path.join(path_station, file) for file in os.listdir(
     path_station) if file.endswith('.xlsx')]
 path_reanalysis = r"F:\Reanalysis Data\Monthly\Reanalysis"
+# ===================================================================
+# Change Model Name From Here Before Running New Models
+# ====================================================================
 path_gcm = r"F:\Reanalysis Data\Monthly\GCM\ACCESS ESM 15\historical"
-output_dir = r"F:\Reanalysis Data\Monthly\Output"
-model_dir = r"F:\Reanalysis Data\Monthly\Models"
+output_dir = r"F:\Reanalysis Data\Monthly\Output\ACCESS ESM 15"
+model_dir = r"F:\Reanalysis Data\Monthly\Models\ACCESS ESM 15"
 
 # Create output and model directories if they don't exist
 os.makedirs(output_dir, exist_ok=True)
@@ -78,7 +82,12 @@ def optimize_model(X_train, y_train, model_type='rf'):
     )
 
     # Define search spaces based on model type
-    if model_type == 'rf':
+    if model_type == 'lr':
+        # For LinearRegression, you need to add the step correctly
+        pipeline.steps.append(('model', LinearRegression()))
+        pipeline.fit(X_train, y_train)
+        return pipeline
+    elif model_type == 'rf':
         pipeline.steps.append(
             ('model', RandomForestRegressor(random_state=42)))
         search_spaces = {
@@ -136,7 +145,7 @@ def downscale(station, reanalysis, gcm, model_type='rf'):
     station (str): Path to station data file.
     reanalysis (str): Path to reanalysis data.
     gcm (str): Path to GCM data.
-    model_type (str): Type of model to use ('rf', 'xgb', or 'svr').
+    model_type (str): Type of model to use ('lr', 'rf', 'xgb', or 'svr').
 
     Returns:
     None: Results are saved to disk.
@@ -179,14 +188,17 @@ def downscale(station, reanalysis, gcm, model_type='rf'):
 
     mbc = monthly_bias_correction(
         y_observed, y_predicted, variable_name=f"mbc_hist_{model_type}")
-    nbc = nested_bias_correction(
-        y_observed, y_predicted, variable_name=f"nbc_hist_{model_type}")
+
+    # nbc = nested_bias_correction(
+    #     y_observed, y_predicted, variable_name=f"nbc_hist_{model_type}")
 
     # SSP245 scenario downscaling
-    ssp_path = r"F:\Reanalysis Data\Monthly\GCM\ACCESS ESM 15\ssp245"
+    ssp_path_245 = r"F:\Reanalysis Data\Monthly\GCM\ACCESS ESM 15\ssp245"
+    ssp_path_585 = r"F:\Reanalysis Data\Monthly\GCM\ACCESS ESM 15\ssp585"
     lat = df[0].iloc[0]['LATITUDE']
     lon = df[0].iloc[0]['LONGITUDE']
-    X_ssp_245 = add_time_features(wrangle_gcm(ssp_path, lat, lon))
+    X_ssp_245 = add_time_features(wrangle_gcm(ssp_path_245, lat, lon))
+    X_ssp_585 = add_time_features(wrangle_gcm(ssp_path_585, lat, lon))
 
     downscaled_ssp_245 = model.predict(X_ssp_245[X_test.columns])
     downscaled_ssp_245 = pd.Series(data=downscaled_ssp_245.reshape(-1),
@@ -195,9 +207,16 @@ def downscale(station, reanalysis, gcm, model_type='rf'):
     mbc_ssp_245 = monthly_bias_correction(
         y_observed, downscaled_ssp_245, variable_name=f"mbc_ssp_245_{model_type}")
 
+    downscaled_ssp_585 = model.predict(X_ssp_585[X_test.columns])
+    downscaled_ssp_585 = pd.Series(data=downscaled_ssp_585.reshape(-1),
+                                   index=X_ssp_585.index, name=f'downscaled_ssp_585_{model_type}')
+
+    mbc_ssp_585 = monthly_bias_correction(
+        y_observed, downscaled_ssp_585, variable_name=f"mbc_ssp_585_{model_type}")
+
     # Create results dataframe
-    merged_df = y_observed.to_frame().join(nbc, how='outer').join(mbc, how='outer').join(
-        y_predicted, how='outer').join(downscaled_ssp_245, how='outer').join(mbc_ssp_245, how='outer')
+    merged_df = y_observed.to_frame().join(mbc, how='outer').join(
+        y_predicted, how='outer').join(downscaled_ssp_245, how='outer').join(mbc_ssp_245, how='outer').join(downscaled_ssp_585, how='outer').join(mbc_ssp_585, how='outer')
 
     # Add model evaluation metrics
     merged_df[f"Train MSE ({model_type})"] = train_mse
@@ -249,7 +268,7 @@ def process_station(args):
 
 if __name__ == '__main__':
     # Create job arguments for all stations and model types
-    model_types = ['rf', 'xgb', 'svr']
+    model_types = ['lr', 'rf', 'xgb', 'svr']
     jobs = [(station, model_type)
             for station in station_files for model_type in model_types]
 
