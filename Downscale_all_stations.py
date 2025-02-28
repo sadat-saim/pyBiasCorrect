@@ -1,4 +1,4 @@
-from modules import wrangle, wrangle_gcm, monthly_mean_imputer, add_seasons, monthly_bias_correction, nested_bias_correction
+from modules import wrangle, wrangle_gcm, monthly_mean_imputer, add_seasons
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
@@ -186,8 +186,8 @@ def downscale(station, reanalysis, gcm, model_type='rf'):
     y_observed = y[: downscaled.index[-1]]
     y_predicted = downscaled[y.index[0]:]
 
-    mbc = monthly_bias_correction(
-        y_observed, y_predicted, variable_name=f"mbc_hist_{model_type}")
+    # mbc = monthly_bias_correction(
+    #     y_observed, y_predicted, variable_name=f"mbc_hist_{model_type}")
 
     # nbc = nested_bias_correction(
     #     y_observed, y_predicted, variable_name=f"nbc_hist_{model_type}")
@@ -204,19 +204,19 @@ def downscale(station, reanalysis, gcm, model_type='rf'):
     downscaled_ssp_245 = pd.Series(data=downscaled_ssp_245.reshape(-1),
                                    index=X_ssp_245.index, name=f'downscaled_ssp_245_{model_type}')
 
-    mbc_ssp_245 = monthly_bias_correction(
-        y_observed, downscaled_ssp_245, variable_name=f"mbc_ssp_245_{model_type}")
+    # mbc_ssp_245 = monthly_bias_correction(
+    #     y_observed, downscaled_ssp_245, variable_name=f"mbc_ssp_245_{model_type}")
 
     downscaled_ssp_585 = model.predict(X_ssp_585[X_test.columns])
     downscaled_ssp_585 = pd.Series(data=downscaled_ssp_585.reshape(-1),
                                    index=X_ssp_585.index, name=f'downscaled_ssp_585_{model_type}')
 
-    mbc_ssp_585 = monthly_bias_correction(
-        y_observed, downscaled_ssp_585, variable_name=f"mbc_ssp_585_{model_type}")
+    # mbc_ssp_585 = monthly_bias_correction(
+    #     y_observed, downscaled_ssp_585, variable_name=f"mbc_ssp_585_{model_type}")
 
     # Create results dataframe
-    merged_df = y_observed.to_frame().join(mbc, how='outer').join(
-        y_predicted, how='outer').join(downscaled_ssp_245, how='outer').join(mbc_ssp_245, how='outer').join(downscaled_ssp_585, how='outer').join(mbc_ssp_585, how='outer')
+    merged_df = y_observed.to_frame().join(
+        y_predicted, how='outer').join(downscaled_ssp_245, how='outer').join(downscaled_ssp_585, how='outer')
 
     # Add model evaluation metrics
     merged_df[f"Train MSE ({model_type})"] = train_mse
