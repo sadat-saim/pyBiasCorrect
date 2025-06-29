@@ -81,9 +81,9 @@ def standardize_by_month(series):
     # Standardize the values using the monthly mean and standard deviation
     # Replace 0 with NaN to avoid division by zero
     standardized_values = (
-        series - series.index.month.map(monthly_mean)) / series.index.month.map(monthly_std).replace(0, np.nan)
+        series - series.index.month.map(monthly_mean)) / series.index.month.map(monthly_std)
     # Fill NaN values with 0
-    return standardized_values.fillna(0)
+    return standardized_values
 
 
 def destandardize_by_month(standardized_values, original_series):

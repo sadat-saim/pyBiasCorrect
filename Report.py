@@ -51,7 +51,7 @@ for station_id, models_path in tqdm(station_groups.items(), desc="Processing Sta
             df = pd.read_csv(model_path, index_col=0, parse_dates=True)
 
             # Filter out invalid values
-            valid_model_data = df[f"mbc_hist_{model}"].replace(
+            valid_model_data = df[f"downscaled_hist_{model}"].replace(
                 [np.inf, -np.inf], np.nan).dropna()
 
             # Compute statistics for model
@@ -67,11 +67,11 @@ for station_id, models_path in tqdm(station_groups.items(), desc="Processing Sta
 
             # Compute R2 score if valid
             try:
-                valid_data = df[["wtable", f"mbc_hist_{model}"]].replace(
+                valid_data = df[["wtable", f"downscaled_hist_{model}"]].replace(
                     [np.inf, -np.inf], np.nan).dropna()
                 if not valid_data.empty:
                     station_record[f"r2_{model}"] = r2_score(
-                        valid_data["wtable"], valid_data[f"mbc_hist_{model}"])
+                        valid_data["wtable"], valid_data[f"downscaled_hist_{model}"])
                 else:
                     station_record[f"r2_{model}"] = np.nan
             except ValueError as err:

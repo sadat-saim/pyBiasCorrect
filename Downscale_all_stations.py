@@ -10,6 +10,7 @@ from sklearn.svm import SVR
 from xgboost import XGBRegressor
 from skopt import BayesSearchCV
 from skopt.space import Real, Integer, Categorical
+from modules import nested_bias_correction
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
@@ -268,7 +269,8 @@ def process_station(args):
 
 if __name__ == '__main__':
     # Create job arguments for all stations and model types
-    model_types = ['lr', 'rf', 'xgb', 'svr']
+    # model_types = ['lr', 'rf', 'xgb', 'svr']
+    model_types = ['lr', 'xgb']
     jobs = [(station, model_type)
             for station in station_files for model_type in model_types]
 
