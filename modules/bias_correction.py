@@ -76,7 +76,8 @@ def standardize_by_month(series):
 
     # Group by month and calculate mean and standard deviation
     monthly_mean = series.groupby(series.index.month).mean()
-    monthly_std = series.groupby(series.index.month).std()
+    # Adding a small value to avoid division by zero
+    monthly_std = series.groupby(series.index.month).std() + 0.00000001
 
     # Standardize the values using the monthly mean and standard deviation
     # Replace 0 with NaN to avoid division by zero

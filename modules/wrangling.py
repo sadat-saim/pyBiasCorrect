@@ -89,7 +89,11 @@ def wrangle(station_data_path, reanalysis_data_path, gcm_data_path):
     df_gcm = df_gcm[['air', 'prate', 'pres', 'shum', 'tmax', 'tmin']]
 
     # returns a list containing [Groundwater Dataframe, Reanalysis Dataframe and GCM dataframe]
-    return [df, df_ts, df_gcm]
+    dfs = [df, df_ts, df_gcm]
+
+    for df in dfs:
+        df.index = pd.to_datetime(df.index.astype(str))
+    return dfs
 
 
 def wrangle_gcm(gcm_data_path, lat, lon):
@@ -133,4 +137,5 @@ def wrangle_gcm(gcm_data_path, lat, lon):
                            'pr': 'prate', 'ps': 'pres', 'mrros': 'runof', 'huss': 'shum'})
     df_gcm = df_gcm[['air', 'prate', 'pres', 'shum', 'tmax', 'tmin']]
 
+    df_gcm.index = pd.to_datetime(df_gcm.index.astype(str))
     return df_gcm

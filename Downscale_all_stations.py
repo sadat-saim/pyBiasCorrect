@@ -28,9 +28,9 @@ path_reanalysis = r"F:\Reanalysis Data\Monthly\Reanalysis"
 # ===================================================================
 # Change Model Name From Here Before Running New Models
 # ====================================================================
-path_gcm = r"F:\Reanalysis Data\Monthly\GCM\ACCESS ESM 15\historical"
-output_dir = r"F:\Reanalysis Data\Monthly\Output\ACCESS ESM 15"
-model_dir = r"F:\Reanalysis Data\Monthly\Models\ACCESS ESM 15"
+path_gcm = r"F:\Reanalysis Data\Monthly\GCM\INM CM5 0\historical"
+output_dir = r"F:\Reanalysis Data\Monthly\Output\INM CM5 0"
+model_dir = r"F:\Reanalysis Data\Monthly\Models\INM CM5 0"
 
 # Create output and model directories if they don't exist
 os.makedirs(output_dir, exist_ok=True)
@@ -48,6 +48,7 @@ def add_time_features(X):
     pd.DataFrame: Updated DataFrame with added time features.
     """
     X = X.copy()  # Avoid modifying the original DataFrame
+    print(X.head())
 
     X.loc[:, 'quarter'] = X.index.quarter
     X.loc[:, 'month'] = X.index.month
@@ -194,8 +195,8 @@ def downscale(station, reanalysis, gcm, model_type='rf'):
     #     y_observed, y_predicted, variable_name=f"nbc_hist_{model_type}")
 
     # SSP245 scenario downscaling
-    ssp_path_245 = r"F:\Reanalysis Data\Monthly\GCM\ACCESS ESM 15\ssp245"
-    ssp_path_585 = r"F:\Reanalysis Data\Monthly\GCM\ACCESS ESM 15\ssp585"
+    ssp_path_245 = r"F:\Reanalysis Data\Monthly\GCM\INM CM5 0\ssp245"
+    ssp_path_585 = r"F:\Reanalysis Data\Monthly\GCM\INM CM5 0\ssp585"
     lat = df[0].iloc[0]['LATITUDE']
     lon = df[0].iloc[0]['LONGITUDE']
     X_ssp_245 = add_time_features(wrangle_gcm(ssp_path_245, lat, lon))

@@ -2,7 +2,7 @@ import pandas as pd
 import os
 from tqdm import tqdm
 
-processed_data = r"F:\Reanalysis Data\Monthly\Output\ACCESS ESM 15"
+processed_data = r"F:\Reanalysis Data\Monthly\Output\INM CM5 0"
 
 station_files = [os.path.join(processed_data, file) for file in os.listdir(
     processed_data) if file.endswith('.csv')]
@@ -24,4 +24,4 @@ for station, models in tqdm(station_groups.items()):
     df_combined = df_combined.loc[:, ~df_combined.columns.duplicated()]
     df_combined = df_combined.sort_index(axis=1)
     df_combined.to_csv(
-        rf"F:\Reanalysis Data\Monthly\Combined\ASSESS ESM 15\{station}.csv")
+        rf"F:\Reanalysis Data\Monthly\Combined\INM CM5 0\{station}.csv")
